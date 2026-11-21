@@ -18,7 +18,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -60,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(b);
         setContentView(R.layout.activity_main);
 
+        // ربط العناصر مع حماية
         albumArt = findViewById(R.id.albumArt);
         currentSongText = findViewById(R.id.songTitle);
         seekBar = findViewById(R.id.seekBar);
@@ -71,10 +71,16 @@ public class MainActivity extends AppCompatActivity {
         tabLibrary = findViewById(R.id.tabLibrary);
         screenPlayer = findViewById(R.id.screenPlayer);
 
+        // حماية من الأخطاء إذا كان التصميم ناقص
+        if (tabPlayer == null || tabLibrary == null || screenPlayer == null) {
+            Toast.makeText(this, "خطأ في التصميم: بعض العناصر غير موجودة", Toast.LENGTH_LONG).show();
+            return; // إذا كان التصميم ناقص، نوقف هنا عشان ما يتوقف التطبيق
+        }
+
         tabPlayer.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 screenPlayer.setVisibility(View.VISIBLE);
-                listView.setVisibility(View.GONE);
+                if (listView != null) listView.setVisibility(View.GONE);
                 tabPlayer.setTextColor(Color.parseColor("#00E5FF"));
                 tabLibrary.setTextColor(Color.parseColor("#8B949E"));
             }
@@ -82,62 +88,75 @@ public class MainActivity extends AppCompatActivity {
         tabLibrary.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 screenPlayer.setVisibility(View.GONE);
-                listView.setVisibility(View.VISIBLE);
+                if (listView != null) listView.setVisibility(View.VISIBLE);
                 tabLibrary.setTextColor(Color.parseColor("#00E5FF"));
                 tabPlayer.setTextColor(Color.parseColor("#8B949E"));
             }
         });
 
-        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, songNames) {
-            @Override public View getView(int position, View convertView, ViewGroup parent) {
-                View v = super.getView(position, convertView, parent);
-                TextView tv = (TextView) v;
-                tv.setTextColor(Color.WHITE); tv.setTextSize(16); tv.setPadding(24, 32, 24, 32);
-                return v;
-            }
-        };
-        listView.setAdapter(adapter);
-
-        btnPlayPause.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (musicService != null) {
-                    if (musicService.isPlaying()) musicService.pauseMusic();
-                    else musicService.playMusic();
+        if (listView != null) {
+            adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, songNames) {
+                @Override public View getView(int position, View convertView, ViewGroup parent) {
+                    View v = super.getView(position, convertView, parent);
+                    TextView tv = (TextView) v;
+                    tv.setTextColor(Color.WHITE); tv.setTextSize(16); tv.setPadding(24, 32, 24, 32);
+                    return v;
                 }
-            }
-        });
+            };
+            listView.setAdapter(adapter);
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    playSong(position);
+                    tabPlayer.performClick();
+                }
+            });
+        }
 
-        btnNext.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { if (musicService != null) musicService.playNext(); }
-        });
-        btnPrev.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { if (musicService != null) musicService.playPrev(); }
-        });
+        if (btnPlayPause != null) {
+            btnPlayPause.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    if (musicService != null) {
+                        if (musicService.isPlaying()) musicService.pauseMusic();
+                        else musicService.playMusic();
+                    }
+                }
+            });
+        }
 
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                if (fromUser && musicService != null) musicService.seekTo(progress);
-            }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
-        });
+        if (btnNext != null) {
+            btnNext.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { if (musicService != null) musicService.playNext(); }
+            });
+        }
+        if (btnPrev != null) {
+            btnPrev.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { if (musicService != null) musicService.playPrev(); }
+            });
+        }
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                playSong(position);
-                tabPlayer.performClick();
-            }
-        });
+        if (seekBar != null) {
+            seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                    if (fromUser && musicService != null) musicService.seekTo(progress);
+                }
+                @Override public void onStartTrackingTouch(SeekBar sb) {}
+                @Override public void onStopTrackingTouch(SeekBar sb) {}
+            });
+        }
 
         handler.postDelayed(new Runnable() {
             @Override public void run() {
                 if (isBound && musicService != null) {
-                    seekBar.setMax(musicService.getDuration());
-                    seekBar.setProgress(musicService.getCurrentPosition());
+                    if (seekBar != null) {
+                        seekBar.setMax(musicService.getDuration());
+                        seekBar.setProgress(musicService.getCurrentPosition());
+                    }
                     boolean playing = musicService.isPlaying();
                     if (playing != isPlayingState) {
                         isPlayingState = playing;
-                        btnPlayPause.setImageResource(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+                        if (btnPlayPause != null) {
+                            btnPlayPause.setImageResource(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+                        }
                     }
                 }
                 handler.postDelayed(this, 1000);
@@ -155,8 +174,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void playSong(int index) {
-        if (index < 0 || index >= songUris.size()) return;
-        currentSongText.setText(songNames.get(index));
+        if (index < 0 || index >= songUris.size()) return; // حماية من IndexOutOfBounds
+        if (currentSongText != null) currentSongText.setText(songNames.get(index));
         Intent i = new Intent(this, MusicService.class);
         i.putStringArrayListExtra("ALL_URIS", songUris);
         i.putStringArrayListExtra("ALL_TITLES", songNames);
@@ -183,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
             }
             cursor.close();
         }
-        adapter.notifyDataSetChanged();
+        if (adapter != null) adapter.notifyDataSetChanged();
     }
 
     @Override
